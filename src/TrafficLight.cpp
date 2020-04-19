@@ -14,7 +14,7 @@ T MessageQueue<T>::receive()
     // The received object should then be returned by the receive function. 
     std::unique_lock<std::mutex> ul(_mutex);
     _condition.wait(ul, [this]{
-        return !(this->_queue.empty());
+        return !_queue.empty();
     });
     T v = std::move(_queue.back());
     _queue.pop_back();
@@ -61,7 +61,7 @@ TrafficLightPhase TrafficLight::getCurrentPhase()
 void TrafficLight::simulate()
 {
     // FP.2b : Finally, the private method „cycleThroughPhases“ should be started in a thread when the public method „simulate“ is called. To do this, use the thread queue in the base class. 
-    threads.emplace_back(std::thread(&TrafficLight::cycleThroughPhases,shared_from_this()));
+    threads.emplace_back(std::thread(&TrafficLight::cycleThroughPhases,this));
 }
 
 // virtual function which is executed in a thread
@@ -83,8 +83,10 @@ void TrafficLight::cycleThroughPhases()
         if (timeSinceLastUpdate/1000 > cycleDuration){
             std::lock_guard lg(_mutex);
             _currentPhase = (TrafficLightPhase)(1 -_currentPhase);
-            _messageQueue.send(std::move(_currentPhase));
+            TrafficLightPhase msg = _currentPhase;
+            _messageQueue.send(std::move(msg));
             lastupdate = std::chrono::system_clock::now();
+            cycleDuration = dist(mt);
         }
 
     }
